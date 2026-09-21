@@ -1,0 +1,48 @@
+services:
+  # 1. ML Microservice (FastAPI + Deep Learning / Heuristics)
+  - type: web
+    name: ai-agrivision-ml
+    env: docker
+    dockerfilePath: ./ml-service/Dockerfile
+    dockerContext: ./ml-service
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: CONFIDENCE_THRESHOLD
+        value: "0.60"
+      - key: HIGH_CONFIDENCE_THRESHOLD
+        value: "0.80"
+
+  # 2. Node.js Backend API Gateway
+  - type: web
+    name: ai-agrivision-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false # Set to your MongoDB Atlas connection string
+      - key: JWT_SECRET
+        generateValue: true # Render will generate a cryptographic secret
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: ML_SERVICE_URL
+        sync: false # Set to https://ai-agrivision-ml.onrender.com (or your ML service URL)
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false # Set to your Cloudinary Cloud Name
+      - key: CLOUDINARY_API_KEY
+        sync: false # Set to your Cloudinary API Key
+      - key: CLOUDINARY_API_SECRET
+        sync: false # Set to your Cloudinary API Secret
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX
+        value: "100"

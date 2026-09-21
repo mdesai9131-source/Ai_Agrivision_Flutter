@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: agrivision_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: ai_agrivision
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - agrivision_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: agrivision_ml_service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - MODEL_PATH=/app/app/models/crop_disease_model.keras
+      - CLASS_NAMES_PATH=/app/app/models/class_names.json
+      - CONFIDENCE_THRESHOLD=0.60
+      - HIGH_CONFIDENCE_THRESHOLD=0.80
+    volumes:
+      - ./ml-service/app/models:/app/app/models:ro
+    networks:
+      - agrivision_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agrivision_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGO_URI=mongodb://mongodb:27017/ai_agrivision
+      - JWT_SECRET=change_this_to_a_secure_random_jwt_secret_in_production
+      - JWT_EXPIRE=7d
+      - ML_SERVICE_URL=http://ml-service:8000
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-mock_cloud}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-mock_key}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-mock_secret}
+      - MAPS_API_KEY=${MAPS_API_KEY:-mock_maps_key}
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX=100
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      ml-service:
+        condition: service_healthy
+    networks:
+      - agrivision_network
+
+volumes:
+  mongo_data:
+    driver: local
+
+networks:
+  agrivision_network:
+    driver: bridge
