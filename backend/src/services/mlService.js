@@ -48,8 +48,26 @@ class MLService {
       logger.error(`ML Service communication failed after ${latency}ms: ${error.message}`);
 
       if (error.response && error.response.data) {
-        // ML service returned a 4xx or 5xx with structured error
-        return error.response.data;
+        // If ML service returned structured response with standard success boolean
+        if (typeof error.response.data === 'object' && error.response.data !== null && error.response.data.success !== undefined) {
+          return error.response.data;
+        }
+
+        if (error.response.status === 429) {
+          const err = new Error('The AI prediction service is experiencing high traffic. Please retry in a few moments.');
+          err.code = 'ML_RATE_LIMITED';
+          err.statusCode = 429;
+          throw err;
+        }
+
+        const rawMsg = typeof error.response.data === 'string'
+          ? error.response.data.trim()
+          : (error.response.data.message || error.response.data.detail || 'ML microservice returned an error');
+
+        const err = new Error(rawMsg);
+        err.code = 'ML_SERVICE_ERROR';
+        err.statusCode = error.response.status || 500;
+        throw err;
       }
 
       if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {

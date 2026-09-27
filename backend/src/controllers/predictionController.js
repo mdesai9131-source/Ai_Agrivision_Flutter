@@ -30,9 +30,14 @@ const createPrediction = async (req, res, next) => {
     const mlResponse = await MLService.sendImageForPrediction(req.file.buffer, originalName, crop);
 
     // If ML service reported image quality issues (blurry, dark, low resolution)
-    if (!mlResponse.success) {
+    if (mlResponse && mlResponse.success === false) {
       logger.warn(`Prediction halted due to ML quality check failure: ${JSON.stringify(mlResponse.error)}`);
       return res.status(422).json(mlResponse);
+    }
+
+    if (!mlResponse || !mlResponse.data) {
+      logger.error(`Unexpected ML service response format: ${JSON.stringify(mlResponse)}`);
+      return ApiResponse.error(res, 'ML_INVALID_RESPONSE', 'Invalid response from AI prediction engine.', 502);
     }
 
     const predictionData = mlResponse.data;

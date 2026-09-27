@@ -3,7 +3,7 @@ const logger = require('../utils/logger');
 const ApiResponse = require('../utils/apiResponse');
 
 const errorHandler = (err, req, res, next) => {
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  let statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
   let code = err.code || 'INTERNAL_SERVER_ERROR';
   let message = err.message || 'An unexpected server error occurred.';
   let details = null;
