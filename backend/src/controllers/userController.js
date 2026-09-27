@@ -22,10 +22,17 @@ const getProfile = async (req, res, next) => {
  */
 const updateProfile = async (req, res, next) => {
   try {
-    const { name, phone, location } = req.body;
+    const { name, email, phone, location } = req.body;
 
     const fieldsToUpdate = {};
     if (name) fieldsToUpdate.name = name;
+    if (email) {
+      const existing = await User.findOne({ email: email.toLowerCase(), _id: { $ne: req.user._id } });
+      if (existing) {
+        return ApiResponse.error(res, 'EMAIL_EXISTS', 'This email is already in use by another account.', 409);
+      }
+      fieldsToUpdate.email = email.toLowerCase();
+    }
     if (phone !== undefined) fieldsToUpdate.phone = phone;
     if (location) {
       fieldsToUpdate.location = {

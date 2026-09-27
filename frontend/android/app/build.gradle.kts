@@ -7,7 +7,7 @@ plugins {
 android {
     namespace = "com.example.ai_agrivision"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // ndkVersion = flutter.ndkVersion (not needed since app has no native C++ code; avoids AGP CMake log path bug on Windows)
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
